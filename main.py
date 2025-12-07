@@ -11,7 +11,7 @@ class IMDbContent:
     category: str
 
 
-MY_URI = "mongodb+srv://oguzbatu2934_db_user:w9vjsbD855H1meI1@cluster0.kejl8qw.mongodb.net/?appName=Cluster0"
+MY_URI = "mongodb+srv://oguzbatu2934_db_user:MYPASSWORD@cluster0.kejl8qw.mongodb.net/?appName=Cluster0"
 
 Target_Urls = {
     "Top 250 TV Shows": "https://www.imdb.com/chart/toptv/?ref_=chttp_nv_menu",
