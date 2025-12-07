@@ -12,7 +12,7 @@ class IMDbContent:
     category: str
     watched: bool = False
 
-MY_URI = "mongodb+srv://oguzbatu2934_db_user:MYPASSWORD@cluster0.kejl8qw.mongodb.net/?appName=Cluster0"
+MY_URI = "mongodb+srv://oguzbatu2934_db_user:w9vjsbD855H1meI1@cluster0.kejl8qw.mongodb.net/?appName=Cluster0"
 
 MENU_OPTIONS = {
     "1": {"name": "Top 250 Movies", "url": "https://www.imdb.com/chart/top/?ref_=hm_nv_menu"},
@@ -33,6 +33,7 @@ def print_menu():
     print("4. Find highest Rating ")
     print("5. Mark a Movie as Watched")
     print("6. Show My Watched Movies")
+    print("7. Remove from Watched List")
     print("Q. Exit")
     print("="* 40)
 
@@ -79,6 +80,23 @@ def show_watched_list(db_manager: MongoDBManager):
         print("You haven't marked any movies or series as watched yet.")
 
 
+##---REMOVE FROM WATCHED LIST-----
+def remove_from_watched_list(db_manager):
+    search_name = input(" Enter movie name to remove from watched list: ").strip()
+
+    movie = db_manager.collection.find_one({"title": {"$regex": search_name, "$options": "i"}})
+
+    if movie:
+        if movie.get("watched") == True:
+            db_manager.collection.update_one(
+                {"_id": movie["_id"]},
+                {"$set": {"watched": False}}
+            )
+            print(f" Success! '{movie['title']}' removed from your watched list.")
+        else:
+            print(f" '{movie['title']}' was not in your watched list anyway.")
+    else:
+        print(" Movie not found in database.")
 
 if __name__ == "__main__":
     db_manager = MongoDBManager(MY_URI, "IMDb_Archive", "Allcontent")
@@ -128,9 +146,12 @@ if __name__ == "__main__":
             elif choice == '6':
                 show_watched_list(db_manager)
                 input("\n Press Enter to continue...")
+            elif choice == '7':
+                remove_from_watched_list(db_manager)
+                input("\n Press Enter to continue...")
             else:
                 print("Invalid choice.")
+
     else:
         print("Database connection failed.")
-db_manager.collection.delete_many({})
-print("⚠️ DATABASE CLEARED!")
+print("⚠️ DATABASE CLEANED!")
