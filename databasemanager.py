@@ -31,18 +31,28 @@ class MongoDBManager:
             print(f"--> Connection Failed: {e}")
             return False
 
-    def insert_data(self, data_dict):
-        """Inserts a single dictionary (document) into the collection."""
+    def insert_data(self, data_dict,order_no=None ):
         if self.collection is not None:
-            # Add timestamp automatically
             data_dict["created_at"] = datetime.datetime.now()
-            result = self.collection.insert_one(data_dict)
-            print(f"--> Data Inserted. ID: {result.inserted_id}")
+
+            try:
+                result = self.collection.insert_one(data_dict)
+
+
+                title= data_dict.get('title', 'Unknown')
+                rating = data_dict.get('rating', 0.0)
+                if order_no:
+                    print(f"{order_no} - {title} ({rating})")
+                # -----------------------------
+                else:
+                    print(f"{title} | {rating}")
+            except Exception as e:
+                print(f" Kayıt Hatası: {e}")
+
         else:
             print("--> Connection not established yet!")
 
     def fetch_all_data(self):
-        """Retrieves and prints all documents from the collection."""
         if self.collection is not None:
             data_cursor = self.collection.find()
             print("\n--- Current Data in Collection ---")

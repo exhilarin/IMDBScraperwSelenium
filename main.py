@@ -1,7 +1,8 @@
 from databasemanager import MongoDBManager
 from new_scraper import IMDbScraper
-from dataclasses import dataclass , asdict
+from dataclasses import dataclass, asdict
 import time
+
 
 @dataclass
 class IMDbContent:
@@ -11,58 +12,70 @@ class IMDbContent:
     category: str
 
 
-MY_URI = "mongodb+srv://oguzbatu2934_db_user:MYPASSWORD@cluster0.kejl8qw.mongodb.net/?appName=Cluster0"
+MY_URI = "mongodb+srv://oguzbatu2934_db_user:w9vjsbD855H1meI1@cluster0.kejl8qw.mongodb.net/?appName=Cluster0"
 
-Target_Urls = {
-    "Top 250 TV Shows": "https://www.imdb.com/chart/toptv/?ref_=chttp_nv_menu",
-    "Top 250 Movies": "https://www.imdb.com/chart/top/?ref_=hm_nv_menu",
-    "Most Popular Movies":"https://www.imdb.com/chart/moviemeter/?ref_=chttvtp_nv_menu"
+MENU_OPTIONS = {
+    "1": {"name": "Top 250 Movies", "url": "https://www.imdb.com/chart/top/?ref_=hm_nv_menu"},
+    "2": {"name": "Top 250 TV Shows", "url": "https://www.imdb.com/chart/toptv/?ref_=chttp_nv_menu"},
+    "3": {"name": "Most Popular Movies", "url": "https://www.imdb.com/chart/moviemeter/?ref_=chttvtp_nv_menu"}
 }
 
-if __name__ == "__main__":
-    print("---- ULTIMATE IMDB ARCHIVE STARTING ----\n")
 
-    db_manager = MongoDBManager(MY_URI, "IMDb_Archive","Allcontent")
+def print_menu():
+    print("\n" + "=" * 40)
+    print("      IMDb SCRAPER FINAL (STABLE)      ")
+    print("=" * 40)
+    print("1. Top 250 Movies")
+    print("2. Top 250 TV Shows")
+    print("3. Most Popular Movies")
+    print("Q. Exit")
+    print("=" * 40)
+
+
+if __name__ == "__main__":
+    db_manager = MongoDBManager(MY_URI, "IMDb_Archive", "Allcontent")
     scraper = IMDbScraper()
 
     if db_manager.connect():
-        for category_name , url_address in Target_Urls.items():
-            print(f" Processing Target: {category_name}")
-            print(f"URL: {url_address}")
+        while True:
+            print_menu()
+            choice = input("Secim (1-3 veya Q): ").strip().upper()
 
-            scrapped_data= scraper.scrape_data(url_address)
-            if scrapped_data:
-                print(f" {len(scrapped_data)} items scraped saving to database...")
-                count =0
-                for item in scrapped_data:
-                    content_object = IMDbContent(
-                        title=item["title"],
-                        rating=item["rating"],
-                        year=item["year"],
-                        category=category_name
-                    )
-                    db_manager.insert_data(asdict(content_object))
-                    count+=1
-                print(f"{category_name}completed! ({count}records saved) ")
+            if choice == 'Q':
+                break
+
+            if choice in MENU_OPTIONS:
+                target = MENU_OPTIONS[choice]
+
+                # Kullanıcıdan sayı iste (Max 25 geleceğini bilse de soruyoruz)
+                try:
+                    limit = int(input(f"'{target['name']}' kac tane cekilsin? (Max 25): "))
+                except:
+                    limit = 25
+
+                print(f"\n{target['name']} cekiliyor...")
+
+                data = scraper.scrape_data(target['url'], limit)
+
+                if data:
+                    print(f"{len(data)} veri bulundu, kaydediliyor...")
+                    count = 0
+                    for i, item in enumerate (data,1):
+                        content = IMDbContent(
+                            title=item["title"],
+                            rating=item["rating"],
+                            year=item["year"],
+                            category=target["name"]
+                        )
+                        db_manager.insert_data(asdict(content), order_no=i)
+
+
+                    print(f"Completed. {count} records inserted.")
+                else:
+                    print("No data inserted.")
+
+                input("\n Press any key to continue...")
             else:
-                print(f" No Data returned for {category_name}")
-            print("Cooldown ( 2 seconds)...")
-            time.sleep(2)
-        print(" ALL LISTS ARCHIEVED SUCCESSFULLY")
+                print("Invalid choice.")
     else:
-        print("Critical Error : Database Connection Failed. Check your connection or password.")
-
-# main.py dosyasının EN ALTINA bunu ekle ve çalıştır:
-
-print("\n--- 🕵️‍♂️ DOĞRULAMA ZAMANI: İSİMLERİ OKUYORUM ---")
-
-records=db_manager.collection.find()
-
-for record in records:
-    title=record.get("title" ,"Unknown Title")
-    category=record.get("category","Unknown Category")
-    rating=record.get("rating",0.0)
-    year=record.get("year",0)
-
-    print(f" {title} ({rating}) ({year}) [{category}]")
-
+        print("Database connection failed.")
