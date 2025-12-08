@@ -21,9 +21,11 @@ class IMDbContent:
     watched: bool = False
 
 
-# MongoDB Connection String (Placeholder password for security)
-MY_URI="mongodb+srv://oguzbatu2934_db_user:PASSWORD@cluster0.kejl8qw.mongodb.net/?appName=Cluster0"
+# MongoDB Connection String
+# IMPORTANT: Replace MYPASSWORD with your actual password!
+MY_URI ="mongodb+srv://oguzbatu2934_db_user:PASSWORD@cluster0.kejl8qw.mongodb.net/?appName=Cluster0"
 
+# --- SMART LINKS (For fetching 250+ items) ---
 MENU_OPTIONS = {
     "1": {
         "name": "Top 250 Movies",
@@ -31,8 +33,7 @@ MENU_OPTIONS = {
     },
     "2": {
         "name": "Top 250 TV Shows",
-        "url": "https://www.imdb.com/search/title/?title_type=tv_series&groups"
-               "=top_250&sort=user_rating,desc&count=250"
+        "url": "https://www.imdb.com/chart/toptv/?ref_=hm_nv_menu"
     },
     "3": {
         "name": "Most Popular Movies",
@@ -54,6 +55,7 @@ def print_menu():
     print("5. Mark a Movie as Watched")
     print("6. Show My Watched Movies")
     print("7. Remove from Watched List")
+    print("8. CLEAR DATABASE (Delete All)")
     print("Q. Exit")
     print("=" * 40)
 
@@ -100,7 +102,7 @@ def select_movie_from_search(manager, action_text):
         print(f"{index}. {match['title']} ({match['year']}) {status}")
 
     try:
-        selection = int(input("👉 Select number (0 to cancel): "))
+        selection = int(input(" Select number (0 to cancel): "))
         if 1 <= selection <= len(matches):
             return matches[selection - 1]
     except ValueError:
@@ -149,6 +151,17 @@ def remove_from_watched_list(manager):
             print(f"'{movie['title']}' was not in your watched list anyway.")
 
 
+def clear_database(manager):
+    """Deletes all documents from the database."""
+    confirm = input("️ ARE YOU SURE YOU WANT TO DELETE ALL DATA? (Y/N): ").strip().upper()
+    if confirm == "Y":
+        result = manager.collection.delete_many({})
+        print(f" Deleted {result.deleted_count} records. Database is now empty.")
+    else:
+        print("Operation cancelled.")
+
+
+# --- MAIN BLOCK ---
 if __name__ == "__main__":
     # Parsing command line arguments
     parser = argparse.ArgumentParser(description="IMDb Scraper with Selenium")
@@ -156,6 +169,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     db_manager = MongoDBManager(MY_URI, "IMDb_Archive", "Allcontent")
+
+    # Action Map for algorithms (Clean Code)
+    ALGORITHM_ACTIONS = {
+        '4': filter_by_rating,
+        '5': mark_as_watched,
+        '6': show_watched_list,
+        '7': remove_from_watched_list,
+        '8': clear_database
+    }
 
     try:
         if db_manager.connect():
@@ -167,12 +189,19 @@ if __name__ == "__main__":
                     print("Exiting...")
                     break
 
+                # --- SCRAPING OPERATIONS (1, 2, 3) ---
                 if choice in MENU_OPTIONS:
                     target = MENU_OPTIONS[choice]
+
+                    # Graceful Input Handling (Avoid Crash)
                     try:
                         count_input = input(f"Count for '{target['name']}' (Max 250+): ")
-                        LIMIT = int(count_input)
+                        if not count_input:
+                            LIMIT = 25
+                        else:
+                            LIMIT = int(count_input)
                     except ValueError:
+                        print(" Invalid input! Defaulting to 25 items.")
                         LIMIT = 25
 
                     print(f"\n Starting Selenium Scraper for {target['name']} ...")
@@ -192,8 +221,9 @@ if __name__ == "__main__":
                                     year=data_item["year"],
                                     category=target["name"]
                                 )
-                                db_manager.insert_data(asdict(content), i)
-                            print("Completed.")
+                                # Pass rank=i for nicely formatted output
+                                db_manager.insert_data(asdict(content), rank=i)
+                            print(f"Completed. {len(scraped_data)} records processed.")
                         else:
                             print("No data inserted.")
 
@@ -206,18 +236,11 @@ if __name__ == "__main__":
 
                     input("\nPress Enter to continue...")
 
-                elif choice == '4':
-                    filter_by_rating(db_manager)
+                # --- ALGORITHM OPERATIONS (4, 5, 6, 7, 8) ---
+                elif choice in ALGORITHM_ACTIONS:
+                    ALGORITHM_ACTIONS[choice](db_manager)
                     input("\nPress Enter to continue...")
-                elif choice == '5':
-                    mark_as_watched(db_manager)
-                    input("\nPress Enter to continue...")
-                elif choice == '6':
-                    show_watched_list(db_manager)
-                    input("\nPress Enter to continue...")
-                elif choice == '7':
-                    remove_from_watched_list(db_manager)
-                    input("\nPress Enter to continue...")
+
                 else:
                     print("Invalid choice.")
 
