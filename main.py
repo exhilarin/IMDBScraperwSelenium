@@ -4,7 +4,6 @@ This module handles the CLI interface, user interactions,
 and coordinates the scraping and database operations.
 """
 
-
 import argparse
 from dataclasses import dataclass, asdict
 from databasemanager import MongoDBManager
@@ -48,8 +47,14 @@ MENU_OPTIONS = {
 }
 
 
+def clear_terminal():
+    """Clears the terminal screen."""
+    os.system('clear')
+
+
 def print_menu():
     """Displays the main menu options to the user."""
+    clear_terminal()
     print("\n" + "=" * 40)
     print("      IMDb SCRAPER w/SELENIUM     ")
     print("=" * 40)
@@ -192,11 +197,13 @@ if __name__ == "__main__":
                 choice = input("Choice: ").strip().upper()
 
                 if choice == 'Q':
+                    clear_terminal()
                     print("Exiting...")
                     break
 
                 # --- SCRAPING OPERATIONS (1, 2, 3) ---
                 if choice in MENU_OPTIONS:
+                    clear_terminal()
                     target = MENU_OPTIONS[choice]
 
                     # Graceful Input Handling (Avoid Crash)
@@ -244,6 +251,7 @@ if __name__ == "__main__":
 
                 # --- ALGORITHM OPERATIONS (4, 5, 6, 7, 8) ---
                 elif choice in ALGORITHM_ACTIONS:
+                    clear_terminal()
                     ALGORITHM_ACTIONS[choice](db_manager)
                     input("\nPress Enter to continue...")
 
