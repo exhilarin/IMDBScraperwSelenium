@@ -175,7 +175,7 @@ if __name__ == "__main__":
                     except ValueError:
                         LIMIT = 25
 
-                    print(f"\n🚀 Starting Selenium Scraper for {target['name']} ...")
+                    print(f"\n Starting Selenium Scraper for {target['name']} ...")
 
                     # Initialize scraper inside the loop for a fresh session
                     scraper = IMDbScraper(headless=args.headless)

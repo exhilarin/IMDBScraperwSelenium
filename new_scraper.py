@@ -39,7 +39,7 @@ class IMDbScraper:
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         )
 
-        print("🤖 Initializing Selenium WebDriver...")
+        print(" Initializing Selenium WebDriver...")
         self.driver = webdriver.Chrome(
             service=Service(ChromeDriverManager().install()),
             options=chrome_options
@@ -140,13 +140,13 @@ class IMDbScraper:
                         EC.element_to_be_clickable((By.CLASS_NAME, "ipc-see-more__button"))
                     )
                     self.driver.execute_script("arguments[0].click();", load_more_btn)
-                    print(f"🔄 Loading more items... (Current: {len(extracted_data)})")
+                    print(f" Loading more items... (Current: {len(extracted_data)})")
                     time.sleep(3)
                 except Exception:  # pylint: disable=broad-except
                     # If button not found, we might have reached the end
                     break
 
-            print(f"✅ Successfully fetched {len(extracted_data)} items.")
+            print(f" Successfully fetched {len(extracted_data)} items.")
             return extracted_data
 
         except Exception as e:  # pylint: disable=broad-except

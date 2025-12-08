@@ -31,7 +31,7 @@ class MongoDBManager:
             print(f"--> Connection Successful! Target: {self.db_name} -> {self.collection_name}")
             return True
         except Exception as e:  # pylint: disable=broad-except
-            print(f"--> Connection Failed: {e}")
+            print(f"---> Connection Failed: {e}")
             return False
 
     def insert_data(self, data_dict, rank=None):
