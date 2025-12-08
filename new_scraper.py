@@ -1,87 +1,133 @@
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+import time
 
 
 class IMDbScraper:
-    def __init__(self):
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9"
-        }
+    def __init__(self, headless=False):
+        chrome_options = Options()
+        if headless:
+            chrome_options.add_argument("--headless")
 
-    def scrape_data(self, chart_url, limit=10):
-        print(f"Connecting to IMDb: {chart_url}")
+        chrome_options.add_argument("--lang=en-US")
+        prefs = {
+            "intl.accept_languages": "en-US,en",
+            "profile.default_content_setting_values.notifications": 2
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
+
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1920,1080")  # Tam ekran gibi aç
+        chrome_options.add_argument(
+            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+
+        print(" Initializing Selenium WebDriver...")
+        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+
+    def scrape_data(self, chart_url, limit=50):
+        print(f" Connecting to IMDb via Selenium: {chart_url}")
+        self.driver.get(chart_url)
+
+        extracted_data = []
 
         try:
-            response = requests.get(chart_url, headers=self.headers)
+            print(" Waiting for page to load...")
+            WebDriverWait(self.driver, 20).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "ipc-metadata-list-summary-item"))
+            )
 
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.content, "html.parser")
+            while len(extracted_data) < limit:
 
-                metadata_list = soup.find("ul", {"class": "ipc-metadata-list"})
+                items = self.driver.find_elements(By.CLASS_NAME, "ipc-metadata-list-summary-item")
 
-                if not metadata_list:
-                    print("Error: List container not found.")
-                    return []
 
-                items_html = metadata_list.find_all("li")
-                extracted_data = []
+                current_batch = []
 
-                # Limit kontrolü burada
-                for item in items_html[:limit]:
+                for item in items:
+                    if len(current_batch) >= limit:
+                        break
+
                     try:
                         # TITLE
-                        title_tag = item.find("h3", {"class": "ipc-title__text"})
-                        if title_tag:
-                            if ". " in title_tag.text:
-                                title = title_tag.text.split(". ", 1)[1]
+                        try:
+                            title_el = item.find_element(By.CLASS_NAME, "ipc-title__text")
+                            raw_title = title_el.text.strip()
+                            if ". " in raw_title:
+                                title = raw_title.split(". ", 1)[1]
                             else:
-                                title = title_tag.text
-                        else:
+                                title = raw_title
+                        except:
                             title = "Unknown"
 
-                        # RATING (Senin istedigin ozel sinif)
-                        rating = 0.0
-                        rating_tag = item.find("span", {"class": "ipc-rating-star--rating"})
-
-                        if rating_tag:
-                            try:
-                                rating = float(rating_tag.text)
-                            except ValueError:
-                                rating = 0.0
-                        else:
-                            # Yedek (Base)
-                            base_tag = item.find("span", {"class": "ipc-rating-star--base"})
-                            if base_tag:
-                                try:
-                                    rating = float(base_tag.text.split()[0])
-                                except:
-                                    rating = 0.0
+                        # RATING
+                        try:
+                            rating_el = item.find_element(By.CLASS_NAME, "ipc-rating-star--rating")
+                            rating = float(rating_el.text)
+                        except:
+                            rating = 0.0
 
                         # YEAR
-                        metadata_items = item.find_all("span", {"class": "cli-title-metadata-item"})
-                        year = 0
-                        if metadata_items:
-                            year_text = metadata_items[0].text
-                            if year_text.isdigit():
-                                year = int(year_text)
+                        try:
 
-                        data = {
-                            "title": title,
-                            "rating": rating,
-                            "year": year,
-                        }
-                        extracted_data.append(data)
+                            metas = item.find_elements(By.CLASS_NAME, "dli-title-metadata-item")
+                            if not metas:
+                                metas = item.find_elements(By.CLASS_NAME, "cli-title-metadata-item")
 
-                    except Exception:
+                            year = 0
+                            for m in metas:
+                                txt = m.text.strip()
+                                if txt.isdigit() and len(txt) == 4:
+                                    year = int(txt)
+                                    break
+                        except:
+                            year = 0
+
+                        data = {"title": title, "rating": rating, "year": year}
+                        current_batch.append(data)
+
+                    except:
                         continue
 
-                print(f"Successfully fetched {len(extracted_data)} items.")
-                return extracted_data
-            else:
-                print(f"Connection Failed. Status Code: {response.status_code}")
-                return []
+
+                extracted_data = current_batch
+
+                if len(extracted_data) >= limit:
+                    print(f"🎯 Target reached: {len(extracted_data)} items.")
+                    break
+
+                try:
+                    self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    time.sleep(2)
+
+                    load_more_btn = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.CLASS_NAME, "ipc-see-more__button"))
+                    )
+
+                    self.driver.execute_script("arguments[0].click();", load_more_btn)
+
+                    print(f" Loading more items... (Current: {len(extracted_data)})")
+                    time.sleep(3)
+
+                except Exception:
+                    print(f" End of list or 'Load More' button not found. Stopping with {len(extracted_data)} items.")
+                    break
+
+            print(f" Successfully fetched {len(extracted_data)} items.")
+            return extracted_data
 
         except Exception as e:
-            print(f"Unexpected Error: {e}")
-            return []
+            print(f" Scraper Error: {e}")
+            return extracted_data
+
+    def close(self):
+        try:
+            self.driver.quit()
+        except:
+            pass

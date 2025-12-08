@@ -2,9 +2,6 @@ import datetime
 from pymongo import MongoClient
 
 
-
-
-
 class MongoDBManager:
 
     def __init__(self, uri, db_name, collection_name):
