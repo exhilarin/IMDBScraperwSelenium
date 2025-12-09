@@ -33,7 +33,7 @@ Follow these steps to set up the project locally in an isolated environment.
 Download the project to your local machine:
 
 ```bash
-git clone https://github.com/BatuhanbasSwe/IMDBScraperwSelenium.git
+git clone https://github.com/exhilarin/IMDBScraperwSelenium.git
 cd IMDBScraperwSelenium
 ```
 
